@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VELVRA</title>
+    <link rel="stylesheet" href="adressbook.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="form-section">
+        <h1>Address Information</h1>
+        <p class="subtitle">
+          Already have an address?<a href="myaccount.html">Go Back</a>
+        </p>
+
+        <form>
+          <div class="form-group">
+            <label for="fullName">Full name</label>
+            <input
+              type="text"
+              id="fullName"
+              placeholder="Enter your full name"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="Enter email address"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <div class="phone-input">
+              <select id="countryCode">
+                <option value="254">+254</option>
+                <option value="255">+255</option>
+                <option value="256">+256</option>
+              </select>
+              <input
+                type="tel"
+                id="phone"
+                placeholder="Enter phone number"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="city">City</label>
+            <input
+              type="text"
+              id="city"
+              placeholder="Enter your city"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="region">Region</label>
+            <input
+              type="text"
+              id="region"
+              placeholder="Enter your region"
+              required
+            />
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="terms" required />
+            <label for="terms"
+              >I agree with <a href="#">Terms and Conditions</a></label
+            >
+          </div>
+
+          <button type="submit" id="save-btn">Save Address</button>
+
+         
+
+
+        </form>
+      </div>
+
+      <div class="banner-section"></div>
+    </div>
+
+    <script type="module" src="adressbook.js"></script>
+  </body>
+</html>
