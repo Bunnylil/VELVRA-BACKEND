@@ -4,6 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const passwordInput = document.getElementById("password");
   const signinBtn = document.getElementById("signup-btn");
 
+  // Check if user is already logged in (optional)
+  const userData = localStorage.getItem("user");
+  if (userData) {
+    // Optional: Redirect if already logged in
+    // window.location.href = "dashboard.html";
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     signinBtn.disabled = true;
@@ -11,6 +18,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
+
+    // Basic client-side validation
+    if (!email || !password) {
+      showError("Please fill in all fields");
+      signinBtn.disabled = false;
+      signinBtn.textContent = "Sign In";
+      return;
+    }
 
     try {
       const response = await fetch("http://localhost:5000/api/signin", {
@@ -27,12 +42,29 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(data.message || "Sign in failed");
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Enhanced localStorage handling
+      const userDataToStore = {
+        id: data.user.id,
+        fullName: data.user.fullName,
+        email: data.user.email,
+        // Add other relevant user data you might need
+        lastLogin: new Date().toISOString()
+      };
 
+      localStorage.setItem("user", JSON.stringify(userDataToStore));
+      localStorage.setItem("authToken", data.token || ""); // If using tokens
+
+      console.log("User data stored in localStorage:", userDataToStore);
+
+      // Redirect to dashboard or home page
       window.location.href = "dashboard.html";
     } catch (error) {
       showError(error.message);
       console.error("Sign in error:", error);
+      
+      // Clear invalid credentials from storage if needed
+      localStorage.removeItem("user");
+      localStorage.removeItem("authToken");
     } finally {
       signinBtn.disabled = false;
       signinBtn.textContent = "Sign In";
@@ -40,22 +72,42 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function showError(message) {
-    const existingError = document.querySelector(".password-error");
-    if (existingError) existingError.innerHTML = "";
+    const errorContainer = document.querySelector(".password-error");
+    if (!errorContainer) return;
+    
+    errorContainer.innerHTML = "";
+    errorContainer.style.display = "block";
 
     const errorElement = document.createElement("div");
     errorElement.className = "error-text";
     errorElement.textContent = message;
+    errorContainer.appendChild(errorElement);
 
-    document.querySelector(".password-error").appendChild(errorElement);
+    passwordInput.classList.add("error");
+    emailInput.classList.add("error");
+  }
 
-    document.getElementById("password").classList.add("error");
+  // Clear error when user starts typing
+  emailInput.addEventListener("input", () => {
+    emailInput.classList.remove("error");
+    clearError();
+  });
+
+  passwordInput.addEventListener("input", () => {
+    passwordInput.classList.remove("error");
+    clearError();
+  });
+
+  function clearError() {
+    const errorContainer = document.querySelector(".password-error");
+    if (errorContainer) {
+      errorContainer.innerHTML = "";
+      errorContainer.style.display = "none";
+    }
   }
 
   window.togglePassword = function () {
-    const passwordInput = document.getElementById("password");
     const toggleIcon = document.querySelector(".toggle-password");
-
     if (passwordInput.type === "password") {
       passwordInput.type = "text";
       toggleIcon.classList.replace("fa-eye-slash", "fa-eye");

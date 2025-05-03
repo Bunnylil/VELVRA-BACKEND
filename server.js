@@ -217,6 +217,40 @@ app.post("/reset-password", async (req, res) => {
   }
 });
 
+// Get User Details Route (Simplified - no authentication)
+app.get("/api/user/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Return user details (excluding password)
+    res.status(200).json({
+      success: true,
+      user: {
+        fullName: user.fullName,
+        email: user.email,
+        countryCode: user.countryCode,
+        phone: user.phone,
+        city: user.city,
+        region: user.region
+      }
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while fetching user details" 
+    });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

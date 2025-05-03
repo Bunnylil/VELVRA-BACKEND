@@ -40,6 +40,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         alert("Registration successful!");
 
+        // Store user input data in localStorage (excluding password and terms)
+        localStorage.setItem("user", JSON.stringify({
+          fullName,
+          email,
+          countryCode,
+          phone,
+          city,
+          region,
+        }));
+
+        console.log("User data saved to localStorage:", localStorage.getItem("user"));
+
         window.location.href = "signin.html";
       } else {
         alert(data.message || "Registration failed");
@@ -50,6 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Toggle password visibility
   const togglePassword = () => {
     const passwordInput = document.getElementById("password");
     const eyeIcon = document.querySelector(".toggle-password");
@@ -63,10 +76,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  document
-    .querySelector(".toggle-password")
-    .addEventListener("click", togglePassword);
+  document.querySelector(".toggle-password").addEventListener("click", togglePassword);
 
+  // Password strength indicator
   document.getElementById("password").addEventListener("input", function () {
     const strengthDots = document.querySelectorAll(".strength-dot");
     const strengthText = document.querySelector(".strength-text");

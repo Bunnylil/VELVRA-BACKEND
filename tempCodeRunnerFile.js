@@ -49,7 +49,7 @@ const errorResponse = (res, status, message, error = null) => {
   return res.status(status).json(response);
 };
 
-// Signup Route (unchanged from your original)
+// Signup Route
 app.post("/api/signup", async (req, res) => {
   try {
     const { fullName, email, countryCode, phone, city, region, password } =
@@ -93,7 +93,7 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
-// Signin Route (unchanged from your original)
+// Signin Route
 app.post("/api/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -143,7 +143,7 @@ app.post("/api/signin", async (req, res) => {
   }
 });
 
-// Check Email Route (unchanged from your original)
+// Check Email Route
 app.post("/api/check-email", async (req, res) => {
   try {
     const { email } = req.body;
@@ -177,54 +177,80 @@ app.post("/api/check-email", async (req, res) => {
   }
 });
 
-// Enhanced Reset Password Route
-app.post("/api/reset-password", async (req, res) => {
+// Reset Password Route - Updated to match your client-side expectations
+app.post("/reset-password", async (req, res) => {
   try {
     const { email, newPassword } = req.body;
 
     // Validate input
     if (!email || !newPassword) {
-      return errorResponse(res, 400, "Both email and new password are required");
-    }
-
-    // Validate password strength
-    if (newPassword.length < 8) {
-      return errorResponse(res, 400, "Password must be at least 8 characters long");
+      return res.status(400).json({ 
+        error: "Both email and new password are required" 
+      });
     }
 
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return errorResponse(res, 404, "No account found with that email address");
-    }
-
-    // Check if new password is different from current one
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
-    if (isSamePassword) {
-      return errorResponse(res, 400, "New password cannot be the same as your current password");
+      return res.status(404).json({ 
+        error: "No account found with that email address" 
+      });
     }
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
-    // Update user's password and clear any reset tokens
+    // Update user's password
     user.password = hashedPassword;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
     await user.save();
 
-    // Return success response
+    // Return success response matching your client-side expectations
     res.status(200).json({
-      success: true,
-      message: "Password updated successfully. You can now log in with your new password.",
+      message: "Password has been reset successfully!"
     });
 
   } catch (error) {
     console.error("Password reset error:", error);
-    return errorResponse(res, 500, "An unexpected error occurred. Please try again later.", error);
+    res.status(500).json({ 
+      error: "An unexpected error occurred. Please try again later." 
+    });
   }
 });
 
+// Get User Details Route (Simplified - no authentication)
+app.get("/api/user/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Return user details (excluding password)
+    res.status(200).json({
+      success: true,
+      user: {
+        fullName: user.fullName,
+        email: user.email,
+        countryCode: user.countryCode,
+        phone: user.phone,
+        city: user.city,
+        region: user.region
+      }
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while fetching user details" 
+    });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
