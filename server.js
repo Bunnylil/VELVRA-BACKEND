@@ -28,7 +28,7 @@ mongoose
 const userSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  countryCode: { type: String, required: true },
+  countryCode: { type: String, required: true, default: "254" },
   phone: { type: String, required: true },
   city: { type: String, required: true },
   region: { type: String, required: true },
@@ -55,10 +55,15 @@ app.post("/api/signup", async (req, res) => {
     const { fullName, email, countryCode, phone, city, region, password } =
       req.body;
 
+    // Validate all required fields
+    if (!fullName || !email || !phone || !city || !region || !password) {
+      return errorResponse(res, 400, "All fields are required");
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+      return errorResponse(res, 400, "Email already in use");
     }
 
     // Hash password
@@ -68,7 +73,7 @@ app.post("/api/signup", async (req, res) => {
     const newUser = new User({
       fullName,
       email,
-      countryCode,
+      countryCode: countryCode || "254",
       phone,
       city,
       region,
@@ -78,18 +83,20 @@ app.post("/api/signup", async (req, res) => {
     await newUser.save();
 
     res.status(201).json({
+      success: true,
       message: "User created successfully",
       user: {
         fullName: newUser.fullName,
         email: newUser.email,
-        phone: newUser.countryCode + newUser.phone,
+        phone: newUser.phone,
+        countryCode: newUser.countryCode,
         city: newUser.city,
         region: newUser.region,
       },
     });
   } catch (error) {
     console.error("Signup error:", error);
-    res.status(500).json({ message: "Server error during signup" });
+    errorResponse(res, 500, "Server error during signup", error);
   }
 });
 
@@ -100,28 +107,19 @@ app.post("/api/signin", async (req, res) => {
 
     // Validate input
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
+      return errorResponse(res, 400, "Email and password are required");
     }
 
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found. Please check your email or sign up.",
-      });
+      return errorResponse(res, 404, "User not found. Please check your email or sign up.");
     }
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Incorrect password. Please try again.",
-      });
+      return errorResponse(res, 401, "Incorrect password. Please try again.");
     }
 
     // Successful login
@@ -132,14 +130,15 @@ app.post("/api/signin", async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        countryCode: user.countryCode,
+        phone: user.phone,
+        city: user.city,
+        region: user.region,
       },
     });
   } catch (error) {
     console.error("Signin error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error. Please try again later.",
-    });
+    errorResponse(res, 500, "Internal server error. Please try again later.", error);
   }
 });
 
@@ -149,19 +148,13 @@ app.post("/api/check-email", async (req, res) => {
     const { email } = req.body;
     
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email is required" 
-      });
+      return errorResponse(res, 400, "Email is required");
     }
 
     const user = await User.findOne({ email });
     
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Email not found" 
-      });
+      return errorResponse(res, 404, "Email not found");
     }
 
     res.status(200).json({ 
@@ -170,31 +163,24 @@ app.post("/api/check-email", async (req, res) => {
     });
   } catch (error) {
     console.error("Email check error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error during email check" 
-    });
+    errorResponse(res, 500, "Server error during email check", error);
   }
 });
 
-// Reset Password Route - Updated to match your client-side expectations
-app.post("/reset-password", async (req, res) => {
+// Reset Password Route
+app.post("/api/reset-password", async (req, res) => {
   try {
     const { email, newPassword } = req.body;
 
     // Validate input
     if (!email || !newPassword) {
-      return res.status(400).json({ 
-        error: "Both email and new password are required" 
-      });
+      return errorResponse(res, 400, "Both email and new password are required");
     }
 
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ 
-        error: "No account found with that email address" 
-      });
+      return errorResponse(res, 404, "No account found with that email address");
     }
 
     // Hash the new password
@@ -204,20 +190,18 @@ app.post("/reset-password", async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    // Return success response matching your client-side expectations
     res.status(200).json({
+      success: true,
       message: "Password has been reset successfully!"
     });
 
   } catch (error) {
     console.error("Password reset error:", error);
-    res.status(500).json({ 
-      error: "An unexpected error occurred. Please try again later." 
-    });
+    errorResponse(res, 500, "An unexpected error occurred. Please try again later.", error);
   }
 });
 
-// Get User Details Route (Simplified - no authentication)
+// Get User Details Route
 app.get("/api/user/:email", async (req, res) => {
   try {
     const { email } = req.params;
@@ -225,10 +209,7 @@ app.get("/api/user/:email", async (req, res) => {
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
-      });
+      return errorResponse(res, 404, "User not found");
     }
 
     // Return user details (excluding password)
@@ -245,12 +226,52 @@ app.get("/api/user/:email", async (req, res) => {
     });
   } catch (error) {
     console.error("Get user error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error while fetching user details" 
-    });
+    errorResponse(res, 500, "Server error while fetching user details", error);
   }
 });
+
+// Update Address Information Route
+app.put("/api/update-address", async (req, res) => {
+  try {
+    const { email, countryCode, phone, city, region } = req.body;
+
+    // Validate input
+    if (!email || !countryCode || !phone || !city || !region) {
+      return errorResponse(res, 400, "All fields are required");
+    }
+
+    // Find user and update address information
+    const updatedUser = await User.findOneAndUpdate(
+      { email },
+      { 
+        countryCode,
+        phone,
+        city,
+        region
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      return errorResponse(res, 404, "User not found");
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Address updated successfully",
+      user: {
+        countryCode: updatedUser.countryCode,
+        phone: updatedUser.phone,
+        city: updatedUser.city,
+        region: updatedUser.region
+      }
+    });
+  } catch (error) {
+    console.error("Update address error:", error);
+    errorResponse(res, 500, "Server error while updating address", error);
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
