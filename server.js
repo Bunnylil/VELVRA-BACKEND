@@ -100,6 +100,30 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
+// Add this schema definition before your routes
+const thumbnailSchema = new mongoose.Schema({
+  videoUrl: { type: String, required: true },
+  title: { type: String },
+  description: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Thumbnail = mongoose.model('Thumbnail1', thumbnailSchema, 'thumbnail1');
+
+// Add this new route to get all thumbnails
+app.get("/api/thumbnails", async (req, res) => {
+  try {
+    const thumbnails = await Thumbnail.find({});
+    res.status(200).json({
+      success: true,
+      thumbnails
+    });
+  } catch (error) {
+    console.error("Error fetching thumbnails:", error);
+    errorResponse(res, 500, "Server error while fetching thumbnails", error);
+  }
+});
+
 // Signin Route
 app.post("/api/signin", async (req, res) => {
   try {
