@@ -40,6 +40,19 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+// Product Schema
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  imageUrl: { type: String, required: true },
+  description: { type: String },
+  category: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Product = mongoose.model('Product', productSchema, 'pagea');
+
+
 // Helper function for error responses
 const errorResponse = (res, status, message, error = null) => {
   const response = { success: false, message };
@@ -251,6 +264,20 @@ app.get("/api/user/:email", async (req, res) => {
   } catch (error) {
     console.error("Get user error:", error);
     errorResponse(res, 500, "Server error while fetching user details", error);
+  }
+});
+
+// Get Products Route
+app.get("/api/products", async (req, res) => {
+  try {
+    const products = await Product.find({});
+    res.status(200).json({
+      success: true,
+      products
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    errorResponse(res, 500, "Server error while fetching products", error);
   }
 });
 
