@@ -289,7 +289,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (element && value) element.textContent = value;
   }
 
-  // Update price display
+ 
   function updatePrice(element, price) {
     if (element && price) {
       const priceParts = price.toFixed(2).split(".");
@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Update size options
+  
   function updateSizeOptions(category, sizes) {
     const container = document.querySelector(`.${category}-sizes`);
     if (!container) return;
@@ -319,16 +319,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Handle size selection
+  
   function selectSize(category, size, element) {
-    // Remove selected class from all sizes in this category
+    
     document
       .querySelectorAll(`.${category}-sizes .size-option`)
       .forEach((opt) => {
         opt.classList.remove("selected");
       });
 
-    // Toggle selection
+    
     if (selectedSizes[category] === size) {
       selectedSizes[category] = null;
     } else {
@@ -337,7 +337,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Update color options
+  
   function updateColorOptions(colors) {
     if (!colorOptionsContainer || !colors?.length) return;
 
@@ -360,23 +360,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Handle color selection
+  
   function selectColor(color, element) {
-    // Remove selected class from all colors
+    
     document.querySelectorAll(".color-option").forEach((opt) => {
       opt.classList.remove("selected");
     });
 
-    // Select clicked color
+    
     element.classList.add("selected");
 
-    // Update video
+    
     if (currentProduct?.videos?.[color]) {
       updateVideoSource(currentProduct.videos[color]);
     }
   }
 
-  // Update video source
+  
   function updateVideoSource(src) {
     if (!src) return;
 
@@ -427,7 +427,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 1000);
   }
 
-  // Show error states
+  
   function showErrorStates() {
     updateTextContent(brandElement, "Brand not available");
     updateTextContent(priceElement, "$--");
@@ -441,6 +441,55 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Initialize the app
+  
   init();
+});
+
+
+document.querySelector('.newsletter-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const emailInput = this.querySelector('.email-input');
+  const errorMessage = this.querySelector('.error-message');
+  const successMessage = this.querySelector('.success-message');
+  const email = emailInput.value.trim();
+  
+  // Reset messages and styles
+  errorMessage.textContent = '';
+  errorMessage.classList.remove('visible');
+  successMessage.textContent = '';
+  emailInput.classList.remove('error');
+  
+  if (!email) {
+    errorMessage.textContent = 'Please enter your email address';
+    errorMessage.classList.add('visible');
+    emailInput.classList.add('error');
+    return;
+  }
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/newsletter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      successMessage.textContent = data.message;
+      emailInput.value = '';
+    } else {
+      errorMessage.textContent = data.message;
+      errorMessage.classList.add('visible');
+      emailInput.classList.add('error');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    errorMessage.textContent = 'Failed to connect to the server. Please try again later.';
+    errorMessage.classList.add('visible');
+    emailInput.classList.add('error');
+  }
 });

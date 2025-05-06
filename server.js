@@ -40,6 +40,22 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+const newsletterSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Newsletter = mongoose.model('Newsletter', newsletterSchema, 'newsletter');
+
 // Product Schema
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -253,6 +269,43 @@ app.post("/api/signin", async (req, res) => {
   }
 });
 
+
+// Handle newsletter signup
+app.post('/api/newsletter', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    // Check if email already exists
+    const existingEmail = await Newsletter.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({ 
+        success: false, 
+        message: 'You have already signed up for our newsletter!' 
+      });
+    }
+
+    // Create new newsletter subscription
+    const newSubscription = new Newsletter({ email });
+    await newSubscription.save();
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Thank you for signing up for our newsletter!' 
+    });
+  } catch (error) {
+    console.error('Newsletter signup error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'An error occurred while processing your request' 
+    });
+  }
+});
+
+
 // Check Email Route
 app.post("/api/check-email", async (req, res) => {
   try {
@@ -277,6 +330,7 @@ app.post("/api/check-email", async (req, res) => {
     errorResponse(res, 500, "Server error during email check", error);
   }
 });
+
 
 // Reset Password Route
 app.post("/api/reset-password", async (req, res) => {
@@ -323,6 +377,7 @@ app.post("/api/reset-password", async (req, res) => {
     );
   }
 });
+
 
 // Get User Details Route
 app.get("/api/user/:email", async (req, res) => {
