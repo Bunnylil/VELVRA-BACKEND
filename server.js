@@ -14,15 +14,14 @@ app.use(bodyParser.json());
 
 // MongoDB Connection
 mongoose
-  .connect(
-    "mongodb+srv://brooklynqueens254:lynmalone254@vx.wo0xzhx.mongodb.net/",
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
-  )
+  .connect("mongodb+srv://brooklynqueens254:lynmalone254@vx.wo0xzhx.mongodb.net/velvra", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// ===== Schemas and Models =====
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -37,26 +36,16 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: Date,
   createdAt: { type: Date, default: Date.now },
 });
-
 const User = mongoose.model("User", userSchema);
 
+// Newsletter Schema
 const newsletterSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  email: { type: String, required: true, unique: true, trim: true, lowercase: true },
+  createdAt: { type: Date, default: Date.now },
 });
+const Newsletter = mongoose.model("Newsletter", newsletterSchema, "newsletter");
 
-const Newsletter = mongoose.model('Newsletter', newsletterSchema, 'newsletter');
-
-// Product Schema
+// Product Schema (Unisex)
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
@@ -68,13 +57,12 @@ const productSchema = new mongoose.Schema({
     female: { type: Number },
     kids: { type: Number },
   },
-  colors: { type: [String] },
+  colors: [String],
   createdAt: { type: Date, default: Date.now },
 });
-
 const Product = mongoose.model("Product", productSchema, "page1");
 
-// Discounta Schema with sizes
+// Discounta Schema
 const discountaSchema = new mongoose.Schema({
   brand: String,
   price: Number,
@@ -92,10 +80,39 @@ const discountaSchema = new mongoose.Schema({
     blue: String,
   },
 });
-
 const Discounta = mongoose.model("Discounta", discountaSchema);
 
-// Helper function for error responses
+// Thumbnail Schema
+const thumbnailSchema = new mongoose.Schema({
+  videoUrl: { type: String, required: true },
+  title: String,
+  description: String,
+  createdAt: { type: Date, default: Date.now },
+});
+const Thumbnail = mongoose.model("Thumbnail1", thumbnailSchema, "thumbnail1");
+
+// MenProduct Schema
+const menProductSchema = new mongoose.Schema({
+  id: Number,
+  name: String,
+  model: String,
+  brand: String,
+  price: Number,
+  image: String,
+  gender: [String],
+  sport: [String],
+  color: String,
+  colors: [String],
+  sizes: [Number],
+  rating: Number,
+  trending: Boolean,
+  new: Boolean,
+  videosets: Object,
+  details: [String],
+});
+const MenProduct = mongoose.model("MenProduct", menProductSchema);
+
+// ===== Helper for Error Response =====
 const errorResponse = (res, status, message, error = null) => {
   const response = { success: false, message };
   if (error && process.env.NODE_ENV === "development") {
@@ -104,50 +121,24 @@ const errorResponse = (res, status, message, error = null) => {
   return res.status(status).json(response);
 };
 
-// Signup Route
+// ===== Routes =====
+
+// Signup
 app.post("/api/signup", async (req, res) => {
   try {
-    const { fullName, email, countryCode, phone, city, region, password } =
-      req.body;
-
-    // Validate all required fields
+    const { fullName, email, countryCode, phone, city, region, password } = req.body;
     if (!fullName || !email || !phone || !city || !region || !password) {
       return errorResponse(res, 400, "All fields are required");
     }
-
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return errorResponse(res, 400, "Email already in use");
-    }
-
-    // Hash password
+    if (existingUser) return errorResponse(res, 400, "Email already in use");
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-    // Create new user
-    const newUser = new User({
-      fullName,
-      email,
-      countryCode: countryCode || "254",
-      phone,
-      city,
-      region,
-      password: hashedPassword,
-    });
-
+    const newUser = new User({ fullName, email, countryCode: countryCode || "254", phone, city, region, password: hashedPassword });
     await newUser.save();
-
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      user: {
-        fullName: newUser.fullName,
-        email: newUser.email,
-        phone: newUser.phone,
-        countryCode: newUser.countryCode,
-        city: newUser.city,
-        region: newUser.region,
-      },
+      user: { fullName, email, phone, countryCode, city, region },
     });
   } catch (error) {
     console.error("Signup error:", error);
@@ -155,60 +146,116 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
-const thumbnailSchema = new mongoose.Schema({
-  videoUrl: { type: String, required: true },
-  title: { type: String },
-  description: { type: String },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const Thumbnail = mongoose.model("Thumbnail1", thumbnailSchema, "thumbnail1");
-
-app.get("/api/thumbnails", async (req, res) => {
+// Signin
+app.post("/api/signin", async (req, res) => {
   try {
-    const thumbnails = await Thumbnail.find({});
+    const { email, password } = req.body;
+    if (!email || !password) return errorResponse(res, 400, "Email and password are required");
+    const user = await User.findOne({ email });
+    if (!user) return errorResponse(res, 404, "User not found");
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return errorResponse(res, 401, "Incorrect password");
     res.status(200).json({
       success: true,
-      thumbnails,
+      message: "Login successful",
+      user: { id: user._id, fullName: user.fullName, email: user.email, countryCode: user.countryCode, phone: user.phone, city: user.city, region: user.region },
     });
   } catch (error) {
-    console.error("Error fetching thumbnails:", error);
-    errorResponse(res, 500, "Server error while fetching thumbnails", error);
+    errorResponse(res, 500, "Internal server error", error);
   }
 });
 
-// Get all products
+// Check Email
+app.post("/api/check-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return errorResponse(res, 400, "Email is required");
+    const user = await User.findOne({ email });
+    if (!user) return errorResponse(res, 404, "Email not found");
+    res.status(200).json({ success: true, message: "Email exists" });
+  } catch (error) {
+    errorResponse(res, 500, "Error during email check", error);
+  }
+});
+
+// Reset Password
+app.post("/api/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) return errorResponse(res, 400, "Both fields required");
+    const user = await User.findOne({ email });
+    if (!user) return errorResponse(res, 404, "No account found");
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    user.password = hashedPassword;
+    await user.save();
+    res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    errorResponse(res, 500, "Error resetting password", error);
+  }
+});
+
+// Get User
+app.get("/api/user/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await User.findOne({ email });
+    if (!user) return errorResponse(res, 404, "User not found");
+    res.status(200).json({
+      success: true,
+      user: { fullName: user.fullName, email: user.email, countryCode: user.countryCode, phone: user.phone, city: user.city, region: user.region },
+    });
+  } catch (error) {
+    errorResponse(res, 500, "Error fetching user", error);
+  }
+});
+
+// Update Address
+app.put("/api/update-address", async (req, res) => {
+  try {
+    const { email, countryCode, phone, city, region } = req.body;
+    if (!email || !countryCode || !phone || !city || !region) return errorResponse(res, 400, "All fields are required");
+    const updatedUser = await User.findOneAndUpdate({ email }, { countryCode, phone, city, region }, { new: true });
+    if (!updatedUser) return errorResponse(res, 404, "User not found");
+    res.status(200).json({ success: true, message: "Address updated", user: updatedUser });
+  } catch (error) {
+    errorResponse(res, 500, "Error updating address", error);
+  }
+});
+
+// Newsletter Signup
+app.post("/api/newsletter", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return errorResponse(res, 400, "Email is required");
+    const existing = await Newsletter.findOne({ email });
+    if (existing) return res.status(409).json({ success: false, message: "Already signed up" });
+    await new Newsletter({ email }).save();
+    res.status(201).json({ success: true, message: "Thank you for signing up!" });
+  } catch (error) {
+    errorResponse(res, 500, "Newsletter signup failed", error);
+  }
+});
+
+// Product Routes
 app.get("/api/products", async (req, res) => {
   try {
     const products = await Product.find({});
-    res.status(200).json({
-      success: true,
-      products,
-    });
+    res.status(200).json({ success: true, products });
   } catch (error) {
-    console.error("Error fetching products:", error);
-    errorResponse(res, 500, "Server error while fetching products", error);
+    errorResponse(res, 500, "Error fetching products", error);
   }
 });
 
-// Get single product by ID
 app.get("/api/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) {
-      return errorResponse(res, 404, "Product not found");
-    }
-    res.status(200).json({
-      success: true,
-      product,
-    });
+    if (!product) return errorResponse(res, 404, "Product not found");
+    res.status(200).json({ success: true, product });
   } catch (error) {
-    console.error("Error fetching product:", error);
-    errorResponse(res, 500, "Server error while fetching product", error);
+    errorResponse(res, 500, "Error fetching product", error);
   }
 });
 
-// API Endpoint
 app.get("/api/discounta", async (req, res) => {
   try {
     const product = await Discounta.findOne();
@@ -218,269 +265,66 @@ app.get("/api/discounta", async (req, res) => {
   }
 });
 
-// Signin Route
-app.post("/api/signin", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      return errorResponse(res, 400, "Email and password are required");
-    }
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return errorResponse(
-        res,
-        404,
-        "User not found. Please check your email or sign up."
-      );
-    }
-
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return errorResponse(res, 401, "Incorrect password. Please try again.");
-    }
-
-    // Successful login
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        countryCode: user.countryCode,
-        phone: user.phone,
-        city: user.city,
-        region: user.region,
-      },
-    });
-  } catch (error) {
-    console.error("Signin error:", error);
-    errorResponse(
-      res,
-      500,
-      "Internal server error. Please try again later.",
-      error
-    );
-  }
-});
-
-
-// Handle newsletter signup
-app.post('/api/newsletter', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required' });
-    }
-
-    // Check if email already exists
-    const existingEmail = await Newsletter.findOne({ email });
-    if (existingEmail) {
-      return res.status(409).json({ 
-        success: false, 
-        message: 'You have already signed up for our newsletter!' 
-      });
-    }
-
-    // Create new newsletter subscription
-    const newSubscription = new Newsletter({ email });
-    await newSubscription.save();
-
-    res.status(201).json({ 
-      success: true, 
-      message: 'Thank you for signing up for our newsletter!' 
-    });
-  } catch (error) {
-    console.error('Newsletter signup error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'An error occurred while processing your request' 
-    });
-  }
-});
-
-
-// Check Email Route
-app.post("/api/check-email", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return errorResponse(res, 400, "Email is required");
-    }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return errorResponse(res, 404, "Email not found");
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Email exists",
-    });
-  } catch (error) {
-    console.error("Email check error:", error);
-    errorResponse(res, 500, "Server error during email check", error);
-  }
-});
-
-
-// Reset Password Route
-app.post("/api/reset-password", async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
-
-    // Validate input
-    if (!email || !newPassword) {
-      return errorResponse(
-        res,
-        400,
-        "Both email and new password are required"
-      );
-    }
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return errorResponse(
-        res,
-        404,
-        "No account found with that email address"
-      );
-    }
-
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-
-    // Update user's password
-    user.password = hashedPassword;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Password has been reset successfully!",
-    });
-  } catch (error) {
-    console.error("Password reset error:", error);
-    errorResponse(
-      res,
-      500,
-      "An unexpected error occurred. Please try again later.",
-      error
-    );
-  }
-});
-
-
-// Get User Details Route
-app.get("/api/user/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return errorResponse(res, 404, "User not found");
-    }
-
-    // Return user details (excluding password)
-    res.status(200).json({
-      success: true,
-      user: {
-        fullName: user.fullName,
-        email: user.email,
-        countryCode: user.countryCode,
-        phone: user.phone,
-        city: user.city,
-        region: user.region,
-      },
-    });
-  } catch (error) {
-    console.error("Get user error:", error);
-    errorResponse(res, 500, "Server error while fetching user details", error);
-  }
-});
-
-// Update Address Information Route
-app.put("/api/update-address", async (req, res) => {
-  try {
-    const { email, countryCode, phone, city, region } = req.body;
-
-    // Validate input
-    if (!email || !countryCode || !phone || !city || !region) {
-      return errorResponse(res, 400, "All fields are required");
-    }
-
-    // Find user and update address information
-    const updatedUser = await User.findOneAndUpdate(
-      { email },
-      {
-        countryCode,
-        phone,
-        city,
-        region,
-      },
-      { new: true } // Return the updated document
-    );
-
-    if (!updatedUser) {
-      return errorResponse(res, 404, "User not found");
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Address updated successfully",
-      user: {
-        countryCode: updatedUser.countryCode,
-        phone: updatedUser.phone,
-        city: updatedUser.city,
-        region: updatedUser.region,
-      },
-    });
-  } catch (error) {
-    console.error("Update address error:", error);
-    errorResponse(res, 500, "Server error while updating address", error);
-  }
-});
-
-// Update discounta product (for admin use)
 app.put("/api/products/discounta/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const updatedProduct = await Discounta.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
-
-    if (!updatedProduct) {
-      return errorResponse(res, 404, "Discount product not found");
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Discount product updated successfully",
-      product: updatedProduct,
-    });
+    const updatedProduct = await Discounta.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedProduct) return errorResponse(res, 404, "Discount product not found");
+    res.status(200).json({ success: true, message: "Updated", product: updatedProduct });
   } catch (error) {
-    console.error("Error updating discount product:", error);
-    errorResponse(
-      res,
-      500,
-      "Server error while updating discount product",
-      error
-    );
+    errorResponse(res, 500, "Error updating discount product", error);
   }
 });
 
-// Start server
+// Thumbnails
+app.get("/api/thumbnails", async (req, res) => {
+  try {
+    const thumbnails = await Thumbnail.find({});
+    res.status(200).json({ success: true, thumbnails });
+  } catch (error) {
+    errorResponse(res, 500, "Error fetching thumbnails", error);
+  }
+});
+
+// MenProduct with filters
+app.get("/api/men/products", async (req, res) => {
+  try {
+    const products = await MenProduct.find({});
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/men/products/filter", async (req, res) => {
+  try {
+    const filters = req.query;
+    let query = {};
+    if (filters.genders) query.gender = { $in: filters.genders.split(',') };
+    if (filters.sports) query.sport = { $in: filters.sports.split(',') };
+    if (filters.colors) query.color = { $in: filters.colors.split(',') };
+    if (filters.brands) query.brand = { $in: filters.brands.split(',') };
+    if (filters.minPrice || filters.maxPrice) {
+      query.price = {};
+      if (filters.minPrice) query.price.$gte = Number(filters.minPrice);
+      if (filters.maxPrice) query.price.$lte = Number(filters.maxPrice);
+    }
+    let sortOption = {};
+    switch (filters.sort) {
+      case "price-low-high": sortOption.price = 1; break;
+      case "price-high-low": sortOption.price = -1; break;
+      case "trending": query.trending = true; break;
+      case "bestsellers": query.rating = { $gt: 4.5 }; break;
+      case "top-rated": sortOption.rating = -1; break;
+      case "newest": query.new = true; break;
+    }
+    const products = await MenProduct.find(query).sort(sortOption);
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Start Server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
